@@ -10,7 +10,7 @@ type GetSubAccountListService struct {
 	c *Client
 }
 
-func (s *GetSubAccountListService) Do(ctx context.Context, opts ...RequestOption) (res *Account, err error) {
+func (s *GetSubAccountListService) Do(ctx context.Context, opts ...RequestOption) (res *SubAccountList, err error) {
 	r := &request{
 		method:   http.MethodGet,
 		endpoint: "/sapi/v1/sub-account/list",
@@ -20,7 +20,7 @@ func (s *GetSubAccountListService) Do(ctx context.Context, opts ...RequestOption
 	if err != nil {
 		return nil, err
 	}
-	res = new(Account)
+	res = new(SubAccountList)
 	err = json.Unmarshal(data, res)
 	if err != nil {
 		return nil, err
