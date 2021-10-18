@@ -662,3 +662,18 @@ func (c *Client) NewAssetDividendService() *AssetDividendService {
 func (c *Client) NewUserUniversalTransferService() *CreateUserUniversalTransferService {
 	return &CreateUserUniversalTransferService{c: c}
 }
+
+// NewGetSubAccountListService
+func (c *Client) NewGetSubAccountListService() *GetSubAccountListService {
+	return &GetSubAccountListService{c: c}
+}
+
+// NewGetSubAccountAssetsService
+func (c *Client) NewGetSubAccountAssetsService() *GetSubAccountAssetsService {
+	return &GetSubAccountAssetsService{c: c}
+}
+
+// NewCreateUniversalTransferService
+func (c *Client) NewCreateUniversalTransferService() *CreateUniversalTransferService {
+	return &CreateUniversalTransferService{c: c}
+}
