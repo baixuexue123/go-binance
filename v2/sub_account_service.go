@@ -70,7 +70,13 @@ func (s *GetSubAccountAssetsService) Do(ctx context.Context, opts ...RequestOpti
 }
 
 type SubAccountAssets struct {
-	Balances []Balance `json:"balances"`
+	Balances []AssetBalance `json:"balances"`
+}
+
+type AssetBalance struct {
+	Asset  string  `json:"asset"`
+	Free   float64 `json:"free"`
+	Locked float64 `json:"locked"`
 }
 
 // CreateUniversalTransferService Universal Transfer (For Master Account)
