@@ -673,7 +673,17 @@ func (c *Client) NewGetSubAccountAssetsService() *GetSubAccountAssetsService {
 	return &GetSubAccountAssetsService{c: c}
 }
 
+// NewGetSubAccountSpotSummaryService
+func (c *Client) NewGetSubAccountSpotSummaryService() *GetSubAccountSpotSummaryService {
+	return &GetSubAccountSpotSummaryService{c: c}
+}
+
 // NewCreateUniversalTransferService
 func (c *Client) NewCreateUniversalTransferService() *CreateUniversalTransferService {
 	return &CreateUniversalTransferService{c: c}
+}
+
+// ListUniversalTransferService
+func (c *Client) NewListUniversalTransferService() *ListUniversalTransferService {
+	return &ListUniversalTransferService{c: c}
 }
