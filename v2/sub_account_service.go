@@ -297,14 +297,13 @@ func (s *ListUniversalTransferService) Do(ctx context.Context, opts ...RequestOp
 }
 
 type UniversalTransfer struct {
-	TranId          uint64 `json:"tranId"`
+	TranId          int64  `json:"tranId"`
 	FromEmail       string `json:"fromEmail"`
 	ToEmail         string `json:"toEmail"`
 	Asset           string `json:"asset"`
 	Amount          string `json:"amount"`
 	FromAccountType string `json:"fromAccountType"`
 	ToAccountType   string `json:"toAccountType"`
-	TransferType    string `json:"transferType"`
 	Status          string `json:"status"`
 	CreateTimeStamp uint64 `json:"createTimeStamp"`
 }
