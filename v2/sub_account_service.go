@@ -260,7 +260,7 @@ func (s *ListUniversalTransferService) Limit(v int) *ListUniversalTransferServic
 	return s
 }
 
-func (s *ListUniversalTransferService) Do(ctx context.Context, opts ...RequestOption) (res []*UniversalTransfer, err error) {
+func (s *ListUniversalTransferService) Do(ctx context.Context, opts ...RequestOption) (res ListUniversalTransferResponse, err error) {
 	r := &request{
 		method:   http.MethodGet,
 		endpoint: "/sapi/v1/sub-account/universalTransfer",
@@ -288,12 +288,16 @@ func (s *ListUniversalTransferService) Do(ctx context.Context, opts ...RequestOp
 	if err != nil {
 		return
 	}
-	res = make([]*UniversalTransfer, 0)
+	res.Result = make([]*UniversalTransfer, 0)
 	err = json.Unmarshal(data, &res)
 	if err != nil {
 		return
 	}
 	return res, nil
+}
+
+type ListUniversalTransferResponse struct {
+	Result []*UniversalTransfer `json:"result"`
 }
 
 type UniversalTransfer struct {
