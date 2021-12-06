@@ -687,3 +687,8 @@ func (c *Client) NewCreateUniversalTransferService() *CreateUniversalTransferSer
 func (c *Client) NewListUniversalTransferService() *ListUniversalTransferService {
 	return &ListUniversalTransferService{c: c}
 }
+
+// NewDustTransferService init Get All Margin Assets service
+func (c *Client) NewGetAllMarginAssetsService() *GetAllMarginAssetsService {
+	return &GetAllMarginAssetsService{c: c}
+}
