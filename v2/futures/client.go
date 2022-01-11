@@ -535,3 +535,8 @@ func (c *Client) NewGetPositionModeService() *GetPositionModeService {
 func (c *Client) NewGetRebateNewUserService() *GetRebateNewUserService {
 	return &GetRebateNewUserService{c: c}
 }
+
+// NewGetOpenInterestService get present open interest of a specific symbol.
+func (c *Client) NewGetOpenInterestService() *GetOpenInterestService {
+	return &GetOpenInterestService{c: c}
+}
