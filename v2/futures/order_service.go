@@ -258,6 +258,58 @@ func (s *ListOpenOrdersService) Do(ctx context.Context, opts ...RequestOption) (
 	return res, nil
 }
 
+// GetOpenOrderService get an opened order
+type GetOpenOrderService struct {
+	c                 *Client
+	symbol            string
+	orderID           *int64
+	origClientOrderID *string
+}
+
+// Symbol set symbol
+func (s *GetOpenOrderService) Symbol(symbol string) *GetOpenOrderService {
+	s.symbol = symbol
+	return s
+}
+
+// OrderID set orderID
+func (s *GetOpenOrderService) OrderID(orderID int64) *GetOpenOrderService {
+	s.orderID = &orderID
+	return s
+}
+
+// OrigClientOrderID set origClientOrderID
+func (s *GetOpenOrderService) OrigClientOrderID(origClientOrderID string) *GetOpenOrderService {
+	s.origClientOrderID = &origClientOrderID
+	return s
+}
+
+// Do send request
+func (s *GetOpenOrderService) Do(ctx context.Context, opts ...RequestOption) (res *Order, err error) {
+	r := &request{
+		method:   http.MethodGet,
+		endpoint: "/fapi/v1/openOrder",
+		secType:  secTypeSigned,
+	}
+	r.setParam("symbol", s.symbol)
+	if s.orderID != nil {
+		r.setParam("orderId", *s.orderID)
+	}
+	if s.origClientOrderID != nil {
+		r.setParam("origClientOrderId", *s.origClientOrderID)
+	}
+	data, _, err := s.c.callAPI(ctx, r, opts...)
+	if err != nil {
+		return nil, err
+	}
+	res = new(Order)
+	err = json.Unmarshal(data, res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 // GetOrderService get an order
 type GetOrderService struct {
 	c                 *Client
