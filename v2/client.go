@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/json"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -18,6 +18,7 @@ import (
 	"github.com/adshao/go-binance/v2/delivery"
 	"github.com/adshao/go-binance/v2/futures"
 	"github.com/bitly/go-simplejson"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // SideType define side type of order
@@ -79,6 +80,9 @@ const (
 
 // UseTestnet switch all the API endpoints from production to the testnet
 var UseTestnet = false
+
+// Redefining the standard package
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Global enums
 const (
@@ -204,6 +208,28 @@ func NewClient(apiKey, secretKey string) *Client {
 		UserAgent:  "Binance/golang",
 		HTTPClient: http.DefaultClient,
 		Logger:     log.New(os.Stderr, "Binance-golang ", log.LstdFlags),
+	}
+}
+
+//NewProxiedClient passing a proxy url
+func NewProxiedClient(apiKey, secretKey, proxyUrl string) *Client {
+	proxy, err := url.Parse(proxyUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tr := &http.Transport{
+		Proxy:           http.ProxyURL(proxy),
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	return &Client{
+		APIKey:    apiKey,
+		SecretKey: secretKey,
+		BaseURL:   getAPIEndpoint(),
+		UserAgent: "Binance/golang",
+		HTTPClient: &http.Client{
+			Transport: tr,
+		},
+		Logger: log.New(os.Stderr, "Binance-golang ", log.LstdFlags),
 	}
 }
 
@@ -693,6 +719,16 @@ func (c *Client) NewTransferToSubAccountService() *TransferToSubAccountService {
 	return &TransferToSubAccountService{c: c}
 }
 
+// NewSubaccountAssetsService init list subaccount assets
+func (c *Client) NewSubaccountAssetsService() *SubaccountAssetsService {
+	return &SubaccountAssetsService{c: c}
+}
+
+// NewSubaccountSpotSummaryService init subaccount spot summary
+func (c *Client) NewSubaccountSpotSummaryService() *SubaccountSpotSummaryService {
+	return &SubaccountSpotSummaryService{c: c}
+}
+
 // NewAssetDividendService init the asset dividend list service
 func (c *Client) NewAssetDividendService() *AssetDividendService {
 	return &AssetDividendService{c: c}
@@ -748,6 +784,11 @@ func (c *Client) NewFiatPaymentsHistoryService() *FiatPaymentsHistoryService {
 	return &FiatPaymentsHistoryService{c: c}
 }
 
+// NewPayTransactionService init the pay transaction service
+func (c *Client) NewPayTradeHistoryService() *PayTradeHistoryService {
+	return &PayTradeHistoryService{c: c}
+}
+
 // NewFiatPaymentsHistoryService init the spot rebate history service
 func (c *Client) NewSpotRebateHistoryService() *SpotRebateHistoryService {
 	return &SpotRebateHistoryService{c: c}
@@ -771,4 +812,9 @@ func (c *Client) NewInterestHistoryService() *InterestHistoryService {
 // NewTradeFeeService init the trade fee service
 func (c *Client) NewTradeFeeService() *TradeFeeService {
 	return &TradeFeeService{c: c}
+}
+
+// NewC2CTradeHistoryService init the c2c trade history service
+func (c *Client) NewC2CTradeHistoryService() *C2CTradeHistoryService {
+	return &C2CTradeHistoryService{c: c}
 }
