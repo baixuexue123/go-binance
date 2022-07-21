@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -251,24 +250,17 @@ func NewClient(apiKey, secretKey string) *Client {
 }
 
 //NewProxiedClient passing a proxy url
-func NewProxiedClient(apiKey, secretKey, proxyUrl string) *Client {
-	proxy, err := url.Parse(proxyUrl)
-	if err != nil {
-		log.Fatal(err)
-	}
+func NewProxiedClient(apiKey, secretKey string, proxyUrl *url.URL) *Client {
 	tr := &http.Transport{
-		Proxy:           http.ProxyURL(proxy),
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		Proxy: http.ProxyURL(proxyUrl),
 	}
 	return &Client{
-		APIKey:    apiKey,
-		SecretKey: secretKey,
-		BaseURL:   getAPIEndpoint(),
-		UserAgent: "Binance/golang",
-		HTTPClient: &http.Client{
-			Transport: tr,
-		},
-		Logger: log.New(os.Stderr, "Binance-golang ", log.LstdFlags),
+		APIKey:     apiKey,
+		SecretKey:  secretKey,
+		BaseURL:    getAPIEndpoint(),
+		UserAgent:  "Binance/golang",
+		HTTPClient: &http.Client{Transport: tr},
+		Logger:     log.New(os.Stderr, "Binance-golang ", log.LstdFlags),
 	}
 }
 
@@ -789,13 +781,8 @@ func (c *Client) NewGetSubAccountListService() *GetSubAccountListService {
 }
 
 // NewGetSubAccountAssetsService
-func (c *Client) NewGetSubAccountAssetsService() *GetSubAccountAssetsService {
-	return &GetSubAccountAssetsService{c: c}
-}
-
-// NewGetSubAccountSpotSummaryService
-func (c *Client) NewGetSubAccountSpotSummaryService() *GetSubAccountSpotSummaryService {
-	return &GetSubAccountSpotSummaryService{c: c}
+func (c *Client) NewGetSubAccountAssetsService() *SubaccountAssetsService {
+	return &SubaccountAssetsService{c: c}
 }
 
 // NewCreateUniversalTransferService
