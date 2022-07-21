@@ -72,6 +72,24 @@ type TransactionType string
 // LendingType define the type of lending (flexible saving, activity, ...)
 type LendingType string
 
+// StakingProduct define the staking product (locked staking, flexible defi staking, locked defi staking, ...)
+type StakingProduct string
+
+// StakingTransactionType define the staking transaction type (subscription, redemption, interest)
+type StakingTransactionType string
+
+// LiquidityOperationType define the type of adding/removing liquidity to a liquidity pool(COMBINATION, SINGLE)
+type LiquidityOperationType string
+
+// SwappingStatus define the status of swap when querying the swap history
+type SwappingStatus int
+
+// LiquidityRewardType define the type of reward we'd claim
+type LiquidityRewardType int
+
+// RewardClaimStatus define the status of claiming a reward
+type RewardClaimStatus int
+
 // Endpoints
 const (
 	baseAPIMainURL    = "https://api.binance.com"
@@ -167,9 +185,30 @@ const (
 	LendingTypeFixed    LendingType = "CUSTOMIZED_FIXED"
 	LendingTypeActivity LendingType = "ACTIVITY"
 
+	LiquidityOperationTypeCombination LiquidityOperationType = "COMBINATION"
+	LiquidityOperationTypeSingle      LiquidityOperationType = "SINGLE"
+
 	timestampKey  = "timestamp"
 	signatureKey  = "signature"
 	recvWindowKey = "recvWindow"
+
+	StakingProductLockedStaking       = "STAKING"
+	StakingProductFlexibleDeFiStaking = "F_DEFI"
+	StakingProductLockedDeFiStaking   = "L_DEFI"
+
+	StakingTransactionTypeSubscription = "SUBSCRIPTION"
+	StakingTransactionTypeRedemption   = "REDEMPTION"
+	StakingTransactionTypeInterest     = "INTEREST"
+
+	SwappingStatusPending SwappingStatus = 0
+	SwappingStatusDone    SwappingStatus = 1
+	SwappingStatusFailed  SwappingStatus = 2
+
+	RewardTypeTrading   LiquidityRewardType = 0
+	RewardTypeLiquidity LiquidityRewardType = 1
+
+	RewardClaimPending RewardClaimStatus = 0
+	RewardClaimDone    RewardClaimStatus = 1
 )
 
 func currentTimestamp() int64 {
@@ -817,4 +856,64 @@ func (c *Client) NewTradeFeeService() *TradeFeeService {
 // NewC2CTradeHistoryService init the c2c trade history service
 func (c *Client) NewC2CTradeHistoryService() *C2CTradeHistoryService {
 	return &C2CTradeHistoryService{c: c}
+}
+
+// NewStakingProductPositionService init the staking product position service
+func (c *Client) NewStakingProductPositionService() *StakingProductPositionService {
+	return &StakingProductPositionService{c: c}
+}
+
+// NewStakingHistoryService init the staking history service
+func (c *Client) NewStakingHistoryService() *StakingHistoryService {
+	return &StakingHistoryService{c: c}
+}
+
+// NewGetAllLiquidityPoolService init the get all swap pool service
+func (c *Client) NewGetAllLiquidityPoolService() *GetAllLiquidityPoolService {
+	return &GetAllLiquidityPoolService{c: c}
+}
+
+// NewGetLiquidityPoolDetailService init the get liquidity pool detial service
+func (c *Client) NewGetLiquidityPoolDetailService() *GetLiquidityPoolDetailService {
+	return &GetLiquidityPoolDetailService{c: c}
+}
+
+// NewAddLiquidityPreviewService init the add liquidity preview service
+func (c *Client) NewAddLiquidityPreviewService() *AddLiquidityPreviewService {
+	return &AddLiquidityPreviewService{c: c}
+}
+
+// NewGetSwapQuoteService init the add liquidity preview service
+func (c *Client) NewGetSwapQuoteService() *GetSwapQuoteService {
+	return &GetSwapQuoteService{c: c}
+}
+
+// NewSwapService init the swap service
+func (c *Client) NewSwapService() *SwapService {
+	return &SwapService{c: c}
+}
+
+// NewAddLiquidityService init the add liquidity service
+func (c *Client) NewAddLiquidityService() *AddLiquidityService {
+	return &AddLiquidityService{c: c}
+}
+
+// NewGetUserSwapRecordsService init the service for listing the swap records
+func (c *Client) NewGetUserSwapRecordsService() *GetUserSwapRecordsService {
+	return &GetUserSwapRecordsService{c: c}
+}
+
+// NewClaimRewardService init the service for liquidity pool rewarding
+func (c *Client) NewClaimRewardService() *ClaimRewardService {
+	return &ClaimRewardService{c: c}
+}
+
+// NewRemoveLiquidityService init the service to remvoe liquidity
+func (c *Client) NewRemoveLiquidityService() *RemoveLiquidityService {
+	return &RemoveLiquidityService{c: c, assets: []string{}}
+}
+
+// NewQueryClaimedRewardHistoryService init the service to query reward claiming history
+func (c *Client) NewQueryClaimedRewardHistoryService() *QueryClaimedRewardHistoryService {
+	return &QueryClaimedRewardHistoryService{c: c}
 }
