@@ -450,6 +450,11 @@ func (c *Client) NewListBookTickersService() *ListBookTickersService {
 	return &ListBookTickersService{c: c}
 }
 
+// NewListSymbolTickerService init listing symbols tickers
+func (c *Client) NewListSymbolTickerService() *ListSymbolTickerService {
+	return &ListSymbolTickerService{c: c}
+}
+
 // NewCreateOrderService init creating order service
 func (c *Client) NewCreateOrderService() *CreateOrderService {
 	return &CreateOrderService{c: c}
@@ -503,6 +508,16 @@ func (c *Client) NewGetAccountService() *GetAccountService {
 // NewGetAPIKeyPermission init getting API key permission
 func (c *Client) NewGetAPIKeyPermission() *GetAPIKeyPermission {
 	return &GetAPIKeyPermission{c: c}
+}
+
+// NewSavingFlexibleProductPositionsService get flexible products positions (Savings)
+func (c *Client) NewSavingFlexibleProductPositionsService() *SavingFlexibleProductPositionsService {
+	return &SavingFlexibleProductPositionsService{c: c}
+}
+
+// NewSavingFixedProjectPositionsService get fixed project positions (Savings)
+func (c *Client) NewSavingFixedProjectPositionsService() *SavingFixedProjectPositionsService {
+	return &SavingFixedProjectPositionsService{c: c}
 }
 
 // NewListSavingsFlexibleProductsService get flexible products list (Savings)
@@ -903,4 +918,24 @@ func (c *Client) NewRemoveLiquidityService() *RemoveLiquidityService {
 // NewQueryClaimedRewardHistoryService init the service to query reward claiming history
 func (c *Client) NewQueryClaimedRewardHistoryService() *QueryClaimedRewardHistoryService {
 	return &QueryClaimedRewardHistoryService{c: c}
+}
+
+// NewGetBNBBurnService init the service to get BNB Burn on spot trade and margin interest
+func (c *Client) NewGetBNBBurnService() *GetBNBBurnService {
+	return &GetBNBBurnService{c: c}
+}
+
+// NewToggleBNBBurnService init the service to toggle BNB Burn on spot trade and margin interest
+func (c *Client) NewToggleBNBBurnService() *ToggleBNBBurnService {
+	return &ToggleBNBBurnService{c: c}
+}
+
+// NewInternalUniversalTransferService Universal Transfer (For Master Account)
+func (c *Client) NewInternalUniversalTransferService() *InternalUniversalTransferService {
+	return &InternalUniversalTransferService{c: c}
+}
+
+// NewInternalUniversalTransferHistoryService Query Universal Transfer History (For Master Account)
+func (c *Client) NewInternalUniversalTransferHistoryService() *InternalUniversalTransferHistoryService {
+	return &InternalUniversalTransferHistoryService{c: c}
 }
