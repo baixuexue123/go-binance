@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -88,6 +89,13 @@ type LiquidityRewardType int
 
 // RewardClaimStatus define the status of claiming a reward
 type RewardClaimStatus int
+
+// RateLimitType define the rate limitation types
+// see https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#enum-definitions
+type RateLimitType string
+
+// RateLimitInterval define the rate limitation intervals
+type RateLimitInterval string
 
 // Endpoints
 const (
@@ -208,6 +216,14 @@ const (
 
 	RewardClaimPending RewardClaimStatus = 0
 	RewardClaimDone    RewardClaimStatus = 1
+
+	RateLimitTypeRequestWeight RateLimitType = "REQUEST_WEIGHT"
+	RateLimitTypeOrders        RateLimitType = "ORDERS"
+	RateLimitTypeRawRequests   RateLimitType = "RAW_REQUESTS"
+
+	RateLimitIntervalSecond RateLimitInterval = "SECOND"
+	RateLimitIntervalMinute RateLimitInterval = "MINUTE"
+	RateLimitIntervalDay    RateLimitInterval = "DAY"
 )
 
 func currentTimestamp() int64 {
@@ -249,18 +265,25 @@ func NewClient(apiKey, secretKey string) *Client {
 	}
 }
 
-//NewProxiedClient passing a proxy url
-func NewProxiedClient(apiKey, secretKey string, proxyUrl *url.URL) *Client {
+// NewProxiedClient passing a proxy url
+func NewProxiedClient(apiKey, secretKey, proxyUrl string) *Client {
+	proxy, err := url.Parse(proxyUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
 	tr := &http.Transport{
-		Proxy: http.ProxyURL(proxyUrl),
+		Proxy:           http.ProxyURL(proxy),
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	return &Client{
-		APIKey:     apiKey,
-		SecretKey:  secretKey,
-		BaseURL:    getAPIEndpoint(),
-		UserAgent:  "Binance/golang",
-		HTTPClient: &http.Client{Transport: tr},
-		Logger:     log.New(os.Stderr, "Binance-golang ", log.LstdFlags),
+		APIKey:    apiKey,
+		SecretKey: secretKey,
+		BaseURL:   getAPIEndpoint(),
+		UserAgent: "Binance/golang",
+		HTTPClient: &http.Client{
+			Transport: tr,
+		},
+		Logger: log.New(os.Stderr, "Binance-golang ", log.LstdFlags),
 	}
 }
 
@@ -595,6 +618,11 @@ func (c *Client) NewExchangeInfoService() *ExchangeInfoService {
 	return &ExchangeInfoService{c: c}
 }
 
+// NewRateLimitService init rate limit service
+func (c *Client) NewRateLimitService() *RateLimitService {
+	return &RateLimitService{c: c}
+}
+
 // NewGetAssetDetailService init get asset detail service
 func (c *Client) NewGetAssetDetailService() *GetAssetDetailService {
 	return &GetAssetDetailService{c: c}
@@ -775,6 +803,11 @@ func (c *Client) NewSubaccountSpotSummaryService() *SubaccountSpotSummaryService
 	return &SubaccountSpotSummaryService{c: c}
 }
 
+// NewSubaccountDepositAddressService init subaccount deposit address service
+func (c *Client) NewSubaccountDepositAddressService() *SubaccountDepositAddressService {
+	return &SubaccountDepositAddressService{c: c}
+}
+
 // NewAssetDividendService init the asset dividend list service
 func (c *Client) NewAssetDividendService() *AssetDividendService {
 	return &AssetDividendService{c: c}
@@ -788,26 +821,6 @@ func (c *Client) NewUserUniversalTransferService() *CreateUserUniversalTransferS
 // NewAllCoinsInformation
 func (c *Client) NewGetAllCoinsInfoService() *GetAllCoinsInfoService {
 	return &GetAllCoinsInfoService{c: c}
-}
-
-// NewGetSubAccountListService
-func (c *Client) NewGetSubAccountListService() *GetSubAccountListService {
-	return &GetSubAccountListService{c: c}
-}
-
-// NewGetSubAccountAssetsService
-func (c *Client) NewGetSubAccountAssetsService() *SubaccountAssetsService {
-	return &SubaccountAssetsService{c: c}
-}
-
-// NewCreateUniversalTransferService
-func (c *Client) NewCreateUniversalTransferService() *CreateUniversalTransferService {
-	return &CreateUniversalTransferService{c: c}
-}
-
-// ListUniversalTransferService
-func (c *Client) NewListUniversalTransferService() *ListUniversalTransferService {
-	return &ListUniversalTransferService{c: c}
 }
 
 // NewDustTransferService init Get All Margin Assets service
@@ -938,4 +951,14 @@ func (c *Client) NewInternalUniversalTransferService() *InternalUniversalTransfe
 // NewInternalUniversalTransferHistoryService Query Universal Transfer History (For Master Account)
 func (c *Client) NewInternalUniversalTransferHistoryService() *InternalUniversalTransferHistoryService {
 	return &InternalUniversalTransferHistoryService{c: c}
+}
+
+// NewSubAccountListService Query Sub-account List (For Master Account)
+func (c *Client) NewSubAccountListService() *SubAccountListService {
+	return &SubAccountListService{c: c}
+}
+
+// NewGetUserAsset Get user assets, just for positive data
+func (c *Client) NewGetUserAsset() *GetUserAssetService {
+	return &GetUserAssetService{c: c}
 }

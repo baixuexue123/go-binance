@@ -3,6 +3,7 @@ package futures
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -258,7 +259,7 @@ func (s *ListOpenOrdersService) Do(ctx context.Context, opts ...RequestOption) (
 	return res, nil
 }
 
-// GetOpenOrderService get an opened order
+// GetOpenOrderService query current open order
 type GetOpenOrderService struct {
 	c                 *Client
 	symbol            string
@@ -266,25 +267,21 @@ type GetOpenOrderService struct {
 	origClientOrderID *string
 }
 
-// Symbol set symbol
 func (s *GetOpenOrderService) Symbol(symbol string) *GetOpenOrderService {
 	s.symbol = symbol
 	return s
 }
 
-// OrderID set orderID
 func (s *GetOpenOrderService) OrderID(orderID int64) *GetOpenOrderService {
 	s.orderID = &orderID
 	return s
 }
 
-// OrigClientOrderID set origClientOrderID
 func (s *GetOpenOrderService) OrigClientOrderID(origClientOrderID string) *GetOpenOrderService {
 	s.origClientOrderID = &origClientOrderID
 	return s
 }
 
-// Do send request
 func (s *GetOpenOrderService) Do(ctx context.Context, opts ...RequestOption) (res *Order, err error) {
 	r := &request{
 		method:   http.MethodGet,
@@ -292,6 +289,9 @@ func (s *GetOpenOrderService) Do(ctx context.Context, opts ...RequestOption) (re
 		secType:  secTypeSigned,
 	}
 	r.setParam("symbol", s.symbol)
+	if s.orderID == nil && s.origClientOrderID == nil {
+		return nil, errors.New("either orderId or origClientOrderId must be sent")
+	}
 	if s.orderID != nil {
 		r.setParam("orderId", *s.orderID)
 	}
