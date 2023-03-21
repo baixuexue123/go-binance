@@ -344,7 +344,7 @@ type ManagedSubAccountDepositService struct {
 	c       *Client
 	toEmail string
 	asset   string
-	amount  string
+	amount  float64
 }
 
 func (s *ManagedSubAccountDepositService) ToEmail(email string) *ManagedSubAccountDepositService {
@@ -357,7 +357,7 @@ func (s *ManagedSubAccountDepositService) Asset(asset string) *ManagedSubAccount
 	return s
 }
 
-func (s *ManagedSubAccountDepositService) Amount(amount string) *ManagedSubAccountDepositService {
+func (s *ManagedSubAccountDepositService) Amount(amount float64) *ManagedSubAccountDepositService {
 	s.amount = amount
 	return s
 }
@@ -398,7 +398,7 @@ type ManagedSubAccountWithdrawalService struct {
 	c            *Client
 	fromEmail    string
 	asset        string
-	amount       string
+	amount       float64
 	transferDate int64 // Withdrawals is automatically occur on the transfer date(UTC0). If a date is not selected, the withdrawal occurs right now
 }
 
@@ -412,7 +412,7 @@ func (s *ManagedSubAccountWithdrawalService) Asset(asset string) *ManagedSubAcco
 	return s
 }
 
-func (s *ManagedSubAccountWithdrawalService) Amount(amount string) *ManagedSubAccountWithdrawalService {
+func (s *ManagedSubAccountWithdrawalService) Amount(amount float64) *ManagedSubAccountWithdrawalService {
 	s.amount = amount
 	return s
 }
