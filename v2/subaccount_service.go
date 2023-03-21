@@ -336,3 +336,115 @@ type SubAccount struct {
 	IsManagedSubAccount         bool   `json:"isManagedSubAccount"`
 	IsAssetManagementSubAccount bool   `json:"isAssetManagementSubAccount"`
 }
+
+// ManagedSubAccountDepositService
+// Deposit Assets Into The Managed Sub-account（For Investor Master Account）
+// https://binance-docs.github.io/apidocs/spot/en/#deposit-assets-into-the-managed-sub-account-for-investor-master-account
+type ManagedSubAccountDepositService struct {
+	c       *Client
+	toEmail string
+	asset   string
+	amount  string
+}
+
+func (s *ManagedSubAccountDepositService) ToEmail(email string) *ManagedSubAccountDepositService {
+	s.toEmail = email
+	return s
+}
+
+func (s *ManagedSubAccountDepositService) Asset(asset string) *ManagedSubAccountDepositService {
+	s.asset = asset
+	return s
+}
+
+func (s *ManagedSubAccountDepositService) Amount(amount string) *ManagedSubAccountDepositService {
+	s.amount = amount
+	return s
+}
+
+type ManagedSubAccountDepositResponse struct {
+	ID int64 `json:"tranId"`
+}
+
+// Do send request
+func (s *ManagedSubAccountDepositService) Do(ctx context.Context, opts ...RequestOption) (*ManagedSubAccountDepositResponse, error) {
+	r := &request{
+		method:   "POST",
+		endpoint: "/sapi/v1/managed-subaccount/deposit",
+		secType:  secTypeSigned,
+	}
+
+	r.setParam("toEmail", s.toEmail)
+	r.setParam("asset", s.asset)
+	r.setParam("amount", s.amount)
+
+	data, err := s.c.callAPI(ctx, r, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &ManagedSubAccountDepositResponse{}
+	if err := json.Unmarshal(data, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// ManagedSubAccountWithdrawalService
+// Withdrawal Assets From The Managed Sub-account（For Investor Master Account）
+// https://binance-docs.github.io/apidocs/spot/en/#withdrawl-assets-from-the-managed-sub-account-for-investor-master-account
+type ManagedSubAccountWithdrawalService struct {
+	c            *Client
+	fromEmail    string
+	asset        string
+	amount       string
+	transferDate int64 // Withdrawals is automatically occur on the transfer date(UTC0). If a date is not selected, the withdrawal occurs right now
+}
+
+func (s *ManagedSubAccountWithdrawalService) FromEmail(email string) *ManagedSubAccountWithdrawalService {
+	s.fromEmail = email
+	return s
+}
+
+func (s *ManagedSubAccountWithdrawalService) Asset(asset string) *ManagedSubAccountWithdrawalService {
+	s.asset = asset
+	return s
+}
+
+func (s *ManagedSubAccountWithdrawalService) Amount(amount string) *ManagedSubAccountWithdrawalService {
+	s.amount = amount
+	return s
+}
+
+type ManagedSubAccountWithdrawalResponse struct {
+	ID int64 `json:"tranId"`
+}
+
+// Do send request
+func (s *ManagedSubAccountWithdrawalService) Do(ctx context.Context, opts ...RequestOption) (*ManagedSubAccountWithdrawalResponse, error) {
+	r := &request{
+		method:   "POST",
+		endpoint: "/sapi/v1/managed-subaccount/withdraw",
+		secType:  secTypeSigned,
+	}
+
+	r.setParam("fromEmail", s.fromEmail)
+	r.setParam("asset", s.asset)
+	r.setParam("amount", s.amount)
+	if s.transferDate > 0 {
+		r.setParam("transferDate", s.transferDate)
+	}
+
+	data, err := s.c.callAPI(ctx, r, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &ManagedSubAccountWithdrawalResponse{}
+	if err := json.Unmarshal(data, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}

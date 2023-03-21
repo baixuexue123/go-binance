@@ -986,3 +986,13 @@ func (c *Client) NewSubAccountListService() *SubAccountListService {
 func (c *Client) NewGetUserAsset() *GetUserAssetService {
 	return &GetUserAssetService{c: c}
 }
+
+// NewManagedSubAccountDepositService Deposit Assets Into The Managed Sub-account（For Master Account）
+func (c *Client) NewManagedSubAccountDepositService() *ManagedSubAccountDepositService {
+	return &ManagedSubAccountDepositService{c: c}
+}
+
+// NewManagedSubAccountWithdrawalService Withdrawal Assets From The Managed Sub-account（For Master Account）
+func (c *Client) NewManagedSubAccountWithdrawalService() *ManagedSubAccountWithdrawalService {
+	return &ManagedSubAccountWithdrawalService{c: c}
+}
