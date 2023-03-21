@@ -359,6 +359,12 @@ func (c *Client) callAPI(ctx context.Context, r *request, opts ...RequestOption)
 	return data, &res.Header, nil
 }
 
+// SetApiEndpoint set api Endpoint
+func (c *Client) SetApiEndpoint(url string) *Client {
+	c.BaseURL = url
+	return c
+}
+
 // NewPingService init ping service
 func (c *Client) NewPingService() *PingService {
 	return &PingService{c: c}
@@ -392,6 +398,11 @@ func (c *Client) NewRecentTradesService() *RecentTradesService {
 // NewKlinesService init klines service
 func (c *Client) NewKlinesService() *KlinesService {
 	return &KlinesService{c: c}
+}
+
+// NewContinuousKlinesService init continuous klines service
+func (c *Client) NewContinuousKlinesService() *ContinuousKlinesService {
+	return &ContinuousKlinesService{c: c}
 }
 
 // NewIndexPriceKlinesService init index price klines service
