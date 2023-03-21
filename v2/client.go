@@ -996,3 +996,8 @@ func (c *Client) NewManagedSubAccountDepositService() *ManagedSubAccountDepositS
 func (c *Client) NewManagedSubAccountWithdrawalService() *ManagedSubAccountWithdrawalService {
 	return &ManagedSubAccountWithdrawalService{c: c}
 }
+
+// NewManagedSubAccountAssetsService Withdrawal Assets From The Managed Sub-account（For Master Account）
+func (c *Client) NewManagedSubAccountAssetsService() *ManagedSubAccountAssetsService {
+	return &ManagedSubAccountAssetsService{c: c}
+}

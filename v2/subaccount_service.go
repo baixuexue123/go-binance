@@ -448,3 +448,47 @@ func (s *ManagedSubAccountWithdrawalService) Do(ctx context.Context, opts ...Req
 
 	return res, nil
 }
+
+// ManagedSubAccountAssetsService
+// Query Managed Sub-account Asset Details（For Investor Master Account）
+// https://binance-docs.github.io/apidocs/spot/en/#query-managed-sub-account-asset-details-for-investor-master-account
+type ManagedSubAccountAssetsService struct {
+	c     *Client
+	email string
+}
+
+func (s *ManagedSubAccountAssetsService) Email(email string) *ManagedSubAccountAssetsService {
+	s.email = email
+	return s
+}
+
+type ManagedSubAccountAsset struct {
+	Coin             string `json:"coin"`
+	Name             string `json:"name"`
+	TotalBalance     string `json:"totalBalance"`
+	AvailableBalance string `json:"availableBalance"`
+	InOrder          string `json:"inOrder"`
+	BtcValue         string `json:"btcValue"`
+}
+
+func (s *ManagedSubAccountAssetsService) Do(ctx context.Context, opts ...RequestOption) ([]*ManagedSubAccountAsset, error) {
+	r := &request{
+		method:   "GET",
+		endpoint: "/sapi/v1/managed-subaccount/asset",
+		secType:  secTypeSigned,
+	}
+
+	r.setParam("email", s.email)
+
+	data, err := s.c.callAPI(ctx, r, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*ManagedSubAccountAsset, 0)
+	if err := json.Unmarshal(data, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
