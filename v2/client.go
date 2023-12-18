@@ -14,11 +14,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/bitly/go-simplejson"
+	jsoniter "github.com/json-iterator/go"
+
 	"github.com/adshao/go-binance/v2/common"
 	"github.com/adshao/go-binance/v2/delivery"
 	"github.com/adshao/go-binance/v2/futures"
-	"github.com/bitly/go-simplejson"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/adshao/go-binance/v2/options"
 )
 
 // SideType define side type of order
@@ -151,13 +153,16 @@ const (
 	SymbolStatusTypeAuctionMatch SymbolStatusType = "AUCTION_MATCH"
 	SymbolStatusTypeBreak        SymbolStatusType = "BREAK"
 
-	SymbolFilterTypeLotSize          SymbolFilterType = "LOT_SIZE"
-	SymbolFilterTypePriceFilter      SymbolFilterType = "PRICE_FILTER"
-	SymbolFilterTypePercentPrice     SymbolFilterType = "PERCENT_PRICE"
-	SymbolFilterTypeMinNotional      SymbolFilterType = "MIN_NOTIONAL"
-	SymbolFilterTypeIcebergParts     SymbolFilterType = "ICEBERG_PARTS"
-	SymbolFilterTypeMarketLotSize    SymbolFilterType = "MARKET_LOT_SIZE"
-	SymbolFilterTypeMaxNumAlgoOrders SymbolFilterType = "MAX_NUM_ALGO_ORDERS"
+	SymbolFilterTypeLotSize            SymbolFilterType = "LOT_SIZE"
+	SymbolFilterTypePriceFilter        SymbolFilterType = "PRICE_FILTER"
+	SymbolFilterTypePercentPriceBySide SymbolFilterType = "PERCENT_PRICE_BY_SIDE"
+	SymbolFilterTypeMinNotional        SymbolFilterType = "MIN_NOTIONAL"
+	SymbolFilterTypeNotional           SymbolFilterType = "NOTIONAL"
+	SymbolFilterTypeIcebergParts       SymbolFilterType = "ICEBERG_PARTS"
+	SymbolFilterTypeMarketLotSize      SymbolFilterType = "MARKET_LOT_SIZE"
+	SymbolFilterTypeMaxNumOrders       SymbolFilterType = "MAX_NUM_ORDERS"
+	SymbolFilterTypeMaxNumAlgoOrders   SymbolFilterType = "MAX_NUM_ALGO_ORDERS"
+	SymbolFilterTypeTrailingDelta      SymbolFilterType = "TRAILING_DELTA"
 
 	UserDataEventTypeOutboundAccountPosition UserDataEventType = "outboundAccountPosition"
 	UserDataEventTypeBalanceUpdate           UserDataEventType = "balanceUpdate"
@@ -304,6 +309,11 @@ func NewFuturesClient(apiKey, secretKey string) *futures.Client {
 // NewDeliveryClient initialize client for coin-M futures API
 func NewDeliveryClient(apiKey, secretKey string) *delivery.Client {
 	return delivery.NewClient(apiKey, secretKey)
+}
+
+// NewOptionsClient initialize client for options API
+func NewOptionsClient(apiKey, secretKey string) *options.Client {
+	return options.NewClient(apiKey, secretKey)
 }
 
 type doFunc func(req *http.Request) (*http.Response, error)
@@ -987,17 +997,27 @@ func (c *Client) NewGetUserAsset() *GetUserAssetService {
 	return &GetUserAssetService{c: c}
 }
 
-// NewManagedSubAccountDepositService Deposit Assets Into The Managed Sub-account（For Master Account）
+// NewManagedSubAccountDepositService Deposit Assets Into The Managed Sub-account（For Investor Master Account）
 func (c *Client) NewManagedSubAccountDepositService() *ManagedSubAccountDepositService {
 	return &ManagedSubAccountDepositService{c: c}
 }
 
-// NewManagedSubAccountWithdrawalService Withdrawal Assets From The Managed Sub-account（For Master Account）
+// NewManagedSubAccountWithdrawalService Withdrawal Assets From The Managed Sub-account（For Investor Master Account）
 func (c *Client) NewManagedSubAccountWithdrawalService() *ManagedSubAccountWithdrawalService {
 	return &ManagedSubAccountWithdrawalService{c: c}
 }
 
-// NewManagedSubAccountAssetsService Withdrawal Assets From The Managed Sub-account（For Master Account）
+// NewManagedSubAccountAssetsService Withdrawal Assets From The Managed Sub-account（For Investor Master Account）
 func (c *Client) NewManagedSubAccountAssetsService() *ManagedSubAccountAssetsService {
 	return &ManagedSubAccountAssetsService{c: c}
+}
+
+// NewSubAccountFuturesAccountService Get Detail on Sub-account's Futures Account (For Master Account)
+func (c *Client) NewSubAccountFuturesAccountService() *SubAccountFuturesAccountService {
+	return &SubAccountFuturesAccountService{c: c}
+}
+
+// NewSubAccountFuturesSummaryV1Service Get Summary of Sub-account's Futures Account (For Master Account)
+func (c *Client) NewSubAccountFuturesSummaryV1Service() *SubAccountFuturesSummaryV1Service {
+	return &SubAccountFuturesSummaryV1Service{c: c}
 }
