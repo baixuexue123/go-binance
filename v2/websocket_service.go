@@ -1,42 +1,60 @@
 package binance
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
-	stdjson "encoding/json"
-)
-
-// Endpoints
-const (
-	baseWsMainURL          = "wss://stream.binance.com:9443/ws"
-	baseWsTestnetURL       = "wss://testnet.binance.vision/ws"
-	baseCombinedMainURL    = "wss://stream.binance.com:9443/stream?streams="
-	baseCombinedTestnetURL = "wss://testnet.binance.vision/stream?streams="
+	"github.com/gorilla/websocket"
 )
 
 var (
+	// Endpoints
+	BaseWsMainURL          = "wss://stream.binance.com:9443/ws"
+	BaseWsTestnetURL       = "wss://stream.testnet.binance.vision/ws"
+	BaseCombinedMainURL    = "wss://stream.binance.com:9443/stream?streams="
+	BaseCombinedTestnetURL = "wss://stream.testnet.binance.vision/stream?streams="
+	BaseWsApiMainURL       = "wss://ws-api.binance.com:443/ws-api/v3"
+	BaseWsApiTestnetURL    = "wss://ws-api.testnet.binance.vision/ws-api/v3"
+
 	// WebsocketTimeout is an interval for sending ping/pong messages if WebsocketKeepalive is enabled
-	WebsocketTimeout = time.Second * 60
+	WebsocketTimeout = time.Second * 600
+	// WebsocketPongTimeout is an interval for sending a PONG frame in response to PING frame from server
+	WebsocketPongTimeout = time.Second * 10
 	// WebsocketKeepalive enables sending ping/pong messages to check the connection stability
-	WebsocketKeepalive = false
+	WebsocketKeepalive = true
+	// WebsocketTimeoutReadWriteConnection is an interval for sending ping/pong messages if WebsocketKeepalive is enabled
+	// using for websocket API (read/write)
+	WebsocketTimeoutReadWriteConnection = time.Second * 10
+	ProxyUrl                            = ""
 )
+
+func getWsProxyUrl() *string {
+	if ProxyUrl == "" {
+		return nil
+	}
+	return &ProxyUrl
+}
+
+func SetWsProxyUrl(url string) {
+	ProxyUrl = url
+}
 
 // getWsEndpoint return the base endpoint of the WS according the UseTestnet flag
 func getWsEndpoint() string {
 	if UseTestnet {
-		return baseWsTestnetURL
+		return BaseWsTestnetURL
 	}
-	return baseWsMainURL
+	return BaseWsMainURL
 }
 
 // getCombinedEndpoint return the base endpoint of the combined stream according the UseTestnet flag
 func getCombinedEndpoint() string {
 	if UseTestnet {
-		return baseCombinedTestnetURL
+		return BaseCombinedTestnetURL
 	}
-	return baseCombinedMainURL
+	return BaseCombinedMainURL
 }
 
 // WsPartialDepthEvent define websocket partial depth book event
@@ -116,7 +134,7 @@ func WsCombinedPartialDepthServe(symbolLevels map[string]string, handler WsParti
 		symbol := strings.Split(stream, "@")[0]
 		event.Symbol = strings.ToUpper(symbol)
 		data := j.Get("data").MustMap()
-		event.LastUpdateID, _ = data["lastUpdateId"].(stdjson.Number).Int64()
+		event.LastUpdateID, _ = data["lastUpdateId"].(json.Number).Int64()
 		bidsLen := len(data["bids"].([]interface{}))
 		event.Bids = make([]Bid, bidsLen)
 		for i := 0; i < bidsLen; i++ {
@@ -237,9 +255,9 @@ func wsCombinedDepthServe(endpoint string, handler WsDepthHandler, errHandler Er
 		symbol := strings.Split(stream, "@")[0]
 		event.Symbol = strings.ToUpper(symbol)
 		data := j.Get("data").MustMap()
-		event.Time, _ = data["E"].(stdjson.Number).Int64()
-		event.LastUpdateID, _ = data["u"].(stdjson.Number).Int64()
-		event.FirstUpdateID, _ = data["U"].(stdjson.Number).Int64()
+		event.Time, _ = data["E"].(json.Number).Int64()
+		event.LastUpdateID, _ = data["u"].(json.Number).Int64()
+		event.FirstUpdateID, _ = data["U"].(json.Number).Int64()
 		bidsLen := len(data["b"].([]interface{}))
 		event.Bids = make([]Bid, bidsLen)
 		for i := 0; i < bidsLen; i++ {
@@ -413,7 +431,7 @@ type WsAggTradeEvent struct {
 	LastBreakdownTradeID  int64  `json:"l"`
 	TradeTime             int64  `json:"T"`
 	IsBuyerMaker          bool   `json:"m"`
-	Placeholder           bool   `json:"M"` // add this field to avoid case insensitive unmarshaling
+	Placeholder           bool   `json:"M"` // add this field to avoid case insensitive unmarshalling
 }
 
 // WsTradeHandler handle websocket trade event
@@ -467,7 +485,7 @@ type WsTradeEvent struct {
 	SellerOrderID int64  `json:"a"`
 	TradeTime     int64  `json:"T"`
 	IsBuyerMaker  bool   `json:"m"`
-	Placeholder   bool   `json:"M"` // add this field to avoid case insensitive unmarshaling
+	Placeholder   bool   `json:"M"` // add this field to avoid case insensitive unmarshalling
 }
 
 type WsCombinedTradeEvent struct {
@@ -477,18 +495,17 @@ type WsCombinedTradeEvent struct {
 
 // WsUserDataEvent define user data event
 type WsUserDataEvent struct {
-	Event             UserDataEventType `json:"e"`
-	Time              int64             `json:"E"`
-	TransactionTime   int64             `json:"T"`
-	AccountUpdateTime int64             `json:"u"`
-	AccountUpdate     WsAccountUpdateList
-	BalanceUpdate     WsBalanceUpdate
-	OrderUpdate       WsOrderUpdate
-	OCOUpdate         WsOCOUpdate
+	Event         UserDataEventType `json:"e"`
+	Time          int64             `json:"E"`
+	AccountUpdate WsAccountUpdateList
+	BalanceUpdate WsBalanceUpdate
+	OrderUpdate   WsOrderUpdate
+	OCOUpdate     WsOCOUpdate
 }
 
 type WsAccountUpdateList struct {
-	WsAccountUpdates []WsAccountUpdate `json:"B"`
+	AccountUpdateTime int64             `json:"u"`
+	WsAccountUpdates  []WsAccountUpdate `json:"B"`
 }
 
 // WsAccountUpdate define account update
@@ -499,8 +516,9 @@ type WsAccountUpdate struct {
 }
 
 type WsBalanceUpdate struct {
-	Asset  string `json:"a"`
-	Change string `json:"d"`
+	Asset           string `json:"a"`
+	Change          string `json:"d"`
+	TransactionTime int64  `json:"T"`
 }
 
 type WsOrderUpdate struct {
@@ -512,7 +530,6 @@ type WsOrderUpdate struct {
 	Volume                  string          `json:"q"`
 	Price                   string          `json:"p"`
 	StopPrice               string          `json:"P"`
-	TrailingDelta           int64           `json:"d"` // Trailing Delta
 	IceBergVolume           string          `json:"F"`
 	OrderListId             int64           `json:"g"` // for OCO
 	OrigCustomOrderId       string          `json:"C"` // customized order ID for the original order
@@ -527,17 +544,35 @@ type WsOrderUpdate struct {
 	FeeCost                 string          `json:"n"`
 	TransactionTime         int64           `json:"T"`
 	TradeId                 int64           `json:"t"`
+	IgnoreI                 int64           `json:"I"` // ignore
 	IsInOrderBook           bool            `json:"w"` // is the order in the order book?
 	IsMaker                 bool            `json:"m"` // is this order maker?
+	IgnoreM                 bool            `json:"M"` // ignore
 	CreateTime              int64           `json:"O"`
 	FilledQuoteVolume       string          `json:"Z"` // the quote volume that already filled
 	LatestQuoteVolume       string          `json:"Y"` // the quote volume for the latest trade
 	QuoteVolume             string          `json:"Q"`
-	TrailingTime            int64           `json:"D"` // Trailing Time
-	StrategyId              int64           `json:"j"` // Strategy ID
-	StrategyType            int64           `json:"J"` // Strategy Type
-	WorkingTime             int64           `json:"W"` // Working Time
 	SelfTradePreventionMode string          `json:"V"`
+
+	//These are fields that appear in the payload only if certain conditions are met.
+	TrailingDelta              int64  `json:"d"` // Appears only for trailing stop orders.
+	TrailingTime               int64  `json:"D"`
+	StrategyId                 int64  `json:"j"` // Appears only if the strategyId parameter was provided upon order placement.
+	StrategyType               int64  `json:"J"` // Appears only if the strategyType parameter was provided upon order placement.
+	PreventedMatchId           int64  `json:"v"` // Appears only for orders that expired due to STP.
+	PreventedQuantity          string `json:"A"`
+	LastPreventedQuantity      string `json:"B"`
+	TradeGroupId               int64  `json:"u"`
+	CounterOrderId             int64  `json:"U"`
+	CounterSymbol              string `json:"Cs"`
+	PreventedExecutionQuantity string `json:"pl"`
+	PreventedExecutionPrice    string `json:"pL"`
+	PreventedExecutionQuoteQty string `json:"pY"`
+	WorkingTime                int64  `json:"W"` // Appears when the order is working on the book
+	MatchType                  string `json:"b"`
+	AllocationId               int64  `json:"a"`
+	WorkingFloor               string `json:"k"`  // Appears for orders that could potentially have allocations
+	UsedSor                    bool   `json:"uS"` // Appears for orders that used SOR
 }
 
 type WsOCOUpdate struct {
@@ -548,6 +583,7 @@ type WsOCOUpdate struct {
 	ListOrderStatus string `json:"L"`
 	RejectReason    string `json:"r"`
 	ClientOrderId   string `json:"C"` // List Client Order ID
+	TransactionTime int64  `json:"T"`
 	Orders          WsOCOOrderList
 }
 
@@ -602,12 +638,6 @@ func WsUserDataServe(listenKey string, handler WsUserDataHandler, errHandler Err
 				errHandler(err)
 				return
 			}
-			// Unmarshal has case sensitive problem
-			event.TransactionTime = j.Get("T").MustInt64()
-			event.OrderUpdate.TransactionTime = j.Get("T").MustInt64()
-			event.OrderUpdate.Id = j.Get("i").MustInt64()
-			event.OrderUpdate.TradeId = j.Get("t").MustInt64()
-			event.OrderUpdate.FeeAsset = j.Get("N").MustString()
 		case UserDataEventTypeListStatus:
 			err = json.Unmarshal(message, &event.OCOUpdate)
 			if err != nil {
@@ -797,7 +827,7 @@ func WsBookTickerServe(symbol string, handler WsBookTickerHandler, errHandler Er
 
 // WsCombinedBookTickerServe is similar to WsBookTickerServe, but it is for multiple symbols
 func WsCombinedBookTickerServe(symbols []string, handler WsBookTickerHandler, errHandler ErrHandler) (doneC, stopC chan struct{}, err error) {
-	endpoint := baseCombinedMainURL
+	endpoint := getCombinedEndpoint()
 	for _, s := range symbols {
 		endpoint += fmt.Sprintf("%s@bookTicker", strings.ToLower(s)) + "/"
 	}
@@ -829,4 +859,23 @@ func WsAllBookTickerServe(handler WsBookTickerHandler, errHandler ErrHandler) (d
 		handler(event)
 	}
 	return wsServe(cfg, wsHandler, errHandler)
+}
+
+// WsApiInitReadWriteConn create and serve connection
+func WsApiInitReadWriteConn() (*websocket.Conn, error) {
+	cfg := newWsConfig(getWsApiEndpoint())
+	conn, err := WsGetReadWriteConnection(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, err
+}
+
+// getWsApiEndpoint return the base endpoint of the API WS according the UseTestnet flag
+func getWsApiEndpoint() string {
+	if UseTestnet {
+		return BaseWsApiTestnetURL
+	}
+	return BaseWsApiMainURL
 }

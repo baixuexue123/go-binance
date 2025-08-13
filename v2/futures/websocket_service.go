@@ -6,39 +6,61 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/bitly/go-simplejson"
+	"github.com/gorilla/websocket"
 )
 
 // Endpoints
-const (
-	baseWsMainUrl          = "wss://fstream.binance.com/ws"
-	baseWsTestnetUrl       = "wss://stream.binancefuture.com/ws"
-	baseCombinedMainURL    = "wss://fstream.binance.com/stream?streams="
-	baseCombinedTestnetURL = "wss://stream.binancefuture.com/stream?streams="
+var (
+	BaseWsMainUrl          = "wss://fstream.binance.com/ws"
+	BaseWsTestnetUrl       = "wss://stream.binancefuture.com/ws"
+	BaseCombinedMainURL    = "wss://fstream.binance.com/stream?streams="
+	BaseCombinedTestnetURL = "wss://stream.binancefuture.com/stream?streams="
+	BaseWsApiMainURL       = "wss://ws-fapi.binance.com/ws-fapi/v1"
+	BaseWsApiTestnetURL    = "wss://testnet.binancefuture.com/ws-fapi/v1"
 )
 
 var (
 	// WebsocketTimeout is an interval for sending ping/pong messages if WebsocketKeepalive is enabled
-	WebsocketTimeout = time.Second * 60
+	WebsocketTimeout = time.Second * 600
+	// WebsocketPongTimeout is an interval for sending a PONG frame in response to PING frame from server
+	WebsocketPongTimeout = time.Second * 10
 	// WebsocketKeepalive enables sending ping/pong messages to check the connection stability
-	WebsocketKeepalive = false
+	WebsocketKeepalive = true
 	// UseTestnet switch all the WS streams from production to the testnet
 	UseTestnet = false
+	// WebsocketTimeoutReadWriteConnection is an interval for sending ping/pong messages if WebsocketKeepalive is enabled
+	// using for websocket API (read/write)
+	WebsocketTimeoutReadWriteConnection = time.Second * 10
+	ProxyUrl                            = ""
 )
+
+func getWsProxyUrl() *string {
+	if ProxyUrl == "" {
+		return nil
+	}
+	return &ProxyUrl
+}
+
+func SetWsProxyUrl(url string) {
+	ProxyUrl = url
+}
 
 // getWsEndpoint return the base endpoint of the WS according the UseTestnet flag
 func getWsEndpoint() string {
 	if UseTestnet {
-		return baseWsTestnetUrl
+		return BaseWsTestnetUrl
 	}
-	return baseWsMainUrl
+	return BaseWsMainUrl
 }
 
 // getCombinedEndpoint return the base endpoint of the combined stream according the UseTestnet flag
 func getCombinedEndpoint() string {
 	if UseTestnet {
-		return baseCombinedTestnetURL
+		return BaseCombinedTestnetURL
 	}
-	return baseCombinedMainURL
+	return BaseCombinedMainURL
 }
 
 // WsAggTradeEvent define websocket aggTrde event.
@@ -368,8 +390,8 @@ type WsContinuousKline struct {
 	ActiveBuyQuoteVolume string `json:"Q"`
 }
 
-// WsContinuousKlineSubcribeArgs used with WsContinuousKlineServe or WsCombinedContinuousKlineServe
-type WsContinuousKlineSubcribeArgs struct {
+// WsContinuousKlineSubscribeArgs used with WsContinuousKlineServe or WsCombinedContinuousKlineServe
+type WsContinuousKlineSubscribeArgs struct {
 	Pair         string
 	ContractType string
 	Interval     string
@@ -379,7 +401,7 @@ type WsContinuousKlineSubcribeArgs struct {
 type WsContinuousKlineHandler func(event *WsContinuousKlineEvent)
 
 // WsContinuousKlineServe serve websocket continuous kline handler with a pair and contractType and interval like 15m, 30s
-func WsContinuousKlineServe(subscribeArgs *WsContinuousKlineSubcribeArgs, handler WsContinuousKlineHandler,
+func WsContinuousKlineServe(subscribeArgs *WsContinuousKlineSubscribeArgs, handler WsContinuousKlineHandler,
 	errHandler ErrHandler) (doneC, stopC chan struct{}, err error) {
 	endpoint := fmt.Sprintf("%s/%s_%s@continuousKline_%s", getWsEndpoint(), strings.ToLower(subscribeArgs.Pair),
 		strings.ToLower(subscribeArgs.ContractType), subscribeArgs.Interval)
@@ -397,7 +419,7 @@ func WsContinuousKlineServe(subscribeArgs *WsContinuousKlineSubcribeArgs, handle
 }
 
 // WsCombinedContinuousKlineServe is similar to WsContinuousKlineServe, but it handles multiple pairs of different contractType with its interval
-func WsCombinedContinuousKlineServe(subscribeArgsList []*WsContinuousKlineSubcribeArgs,
+func WsCombinedContinuousKlineServe(subscribeArgsList []*WsContinuousKlineSubscribeArgs,
 	handler WsContinuousKlineHandler, errHandler ErrHandler) (doneC, stopC chan struct{}, err error) {
 	endpoint := getCombinedEndpoint()
 	for _, val := range subscribeArgsList {
@@ -559,6 +581,11 @@ type WsBookTickerEvent struct {
 	BestAskQty      string `json:"A"`
 }
 
+type WsCombinedBookTickerEvent struct {
+	Data   *WsBookTickerEvent `json:"data"`
+	Stream string             `json:"stream"`
+}
+
 // WsBookTickerHandler handle websocket that pushes updates to the best bid or ask price or quantity in real-time for a specified symbol.
 type WsBookTickerHandler func(event *WsBookTickerEvent)
 
@@ -574,6 +601,25 @@ func WsBookTickerServe(symbol string, handler WsBookTickerHandler, errHandler Er
 			return
 		}
 		handler(event)
+	}
+	return wsServe(cfg, wsHandler, errHandler)
+}
+
+func WsCombinedBookTickerServe(symbols []string, handler WsBookTickerHandler, errHandler ErrHandler) (doneC, stopC chan struct{}, err error) {
+	endpoint := getCombinedEndpoint()
+	for _, s := range symbols {
+		endpoint += fmt.Sprintf("%s@bookTicker", strings.ToLower(s)) + "/"
+	}
+	endpoint = endpoint[:len(endpoint)-1]
+	cfg := newWsConfig(endpoint)
+	wsHandler := func(message []byte) {
+		event := new(WsCombinedBookTickerEvent)
+		err := json.Unmarshal(message, event)
+		if err != nil {
+			errHandler(err)
+			return
+		}
+		handler(event.Data)
 	}
 	return wsServe(cfg, wsHandler, errHandler)
 }
@@ -958,14 +1004,106 @@ func WsCompositiveIndexServe(symbol string, handler WsCompositeIndexHandler, err
 
 // WsUserDataEvent define user data event
 type WsUserDataEvent struct {
-	Event               UserDataEventType     `json:"e"`
-	Time                int64                 `json:"E"`
-	CrossWalletBalance  string                `json:"cw"`
-	MarginCallPositions []WsPosition          `json:"p"`
-	TransactionTime     int64                 `json:"T"`
-	AccountUpdate       WsAccountUpdate       `json:"a"`
-	OrderTradeUpdate    WsOrderTradeUpdate    `json:"o"`
+	Event           UserDataEventType `json:"e"`
+	Time            int64             `json:"E"`
+	TransactionTime int64             `json:"T"`
+
+	// listenKeyExpired only have Event and Time
+	//
+
+	// MARGIN_CALL
+	WsUserDataMarginCall
+
+	// ACCOUNT_UPDATE
+	WsUserDataAccountUpdate
+
+	// ORDER_TRADE_UPDATE
+	WsUserDataOrderTradeUpdate
+
+	// ACCOUNT_CONFIG_UPDATE
+	WsUserDataAccountConfigUpdate
+
+	// TRADE_LITE
+	WsUserDataTradeLite
+}
+
+type WsUserDataAccountConfigUpdate struct {
 	AccountConfigUpdate WsAccountConfigUpdate `json:"ac"`
+}
+
+type WsUserDataAccountUpdate struct {
+	AccountUpdate WsAccountUpdate `json:"a"`
+}
+
+type WsUserDataMarginCall struct {
+	CrossWalletBalance  string       `json:"cw"`
+	MarginCallPositions []WsPosition `json:"p"`
+}
+
+type WsUserDataOrderTradeUpdate struct {
+	OrderTradeUpdate WsOrderTradeUpdate `json:"o"`
+}
+
+type WsUserDataTradeLite struct {
+	Symbol          string   `json:"s"`
+	OriginalQty     string   `json:"q"`
+	OriginalPrice   string   //`json:"p"`
+	IsMaker         bool     `json:"m"`
+	ClientOrderID   string   `json:"c"`
+	Side            SideType `json:"S"`
+	LastFilledPrice string   `json:"L"`
+	LastFilledQty   string   `json:"l"`
+	TradeID         int64    `json:"t"`
+	OrderID         int64    `json:"i"`
+}
+
+func (w *WsUserDataTradeLite) fromSimpleJson(j *simplejson.Json) (err error) {
+	w.Symbol = j.Get("s").MustString()
+	w.OriginalQty = j.Get("q").MustString()
+	w.OriginalPrice = j.Get("p").MustString()
+	w.IsMaker = j.Get("m").MustBool()
+	w.ClientOrderID = j.Get("c").MustString()
+	w.Side = SideType(j.Get("S").MustString())
+	w.LastFilledPrice = j.Get("L").MustString()
+	w.LastFilledQty = j.Get("l").MustString()
+	w.TradeID = j.Get("t").MustInt64()
+	w.OrderID = j.Get("i").MustInt64()
+	return nil
+}
+
+func (e *WsUserDataEvent) UnmarshalJSON(data []byte) error {
+	j, err := newJSON(data)
+	if err != nil {
+		return err
+	}
+	e.Event = UserDataEventType(j.Get("e").MustString())
+	e.Time = j.Get("E").MustInt64()
+	if v, ok := j.CheckGet("T"); ok {
+		e.TransactionTime = v.MustInt64()
+	}
+
+	eventMaps := map[UserDataEventType]any{
+		UserDataEventTypeMarginCall:          &e.WsUserDataMarginCall,
+		UserDataEventTypeAccountUpdate:       &e.WsUserDataAccountUpdate,
+		UserDataEventTypeOrderTradeUpdate:    &e.WsUserDataOrderTradeUpdate,
+		UserDataEventTypeAccountConfigUpdate: &e.WsUserDataAccountConfigUpdate,
+	}
+
+	switch e.Event {
+	case UserDataEventTypeTradeLite:
+		return e.WsUserDataTradeLite.fromSimpleJson(j)
+	case UserDataEventTypeListenKeyExpired:
+		// noting
+	default:
+		if v, ok := eventMaps[e.Event]; ok {
+			if err := json.Unmarshal(data, v); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("unexpected event type: %v", e.Event)
+		}
+	}
+	return nil
 }
 
 // WsAccountUpdate define account update
@@ -999,36 +1137,40 @@ type WsPosition struct {
 
 // WsOrderTradeUpdate define order trade update
 type WsOrderTradeUpdate struct {
-	Symbol               string             `json:"s"`
-	ClientOrderID        string             `json:"c"`
-	Side                 SideType           `json:"S"`
-	Type                 OrderType          `json:"o"`
-	TimeInForce          TimeInForceType    `json:"f"`
-	OriginalQty          string             `json:"q"`
-	OriginalPrice        string             `json:"p"`
-	AveragePrice         string             `json:"ap"`
-	StopPrice            string             `json:"sp"`
-	ExecutionType        OrderExecutionType `json:"x"`
-	Status               OrderStatusType    `json:"X"`
-	ID                   int64              `json:"i"`
-	LastFilledQty        string             `json:"l"`
-	AccumulatedFilledQty string             `json:"z"`
-	LastFilledPrice      string             `json:"L"`
-	CommissionAsset      string             `json:"N"`
-	Commission           string             `json:"n"`
-	TradeTime            int64              `json:"T"`
-	TradeID              int64              `json:"t"`
-	BidsNotional         string             `json:"b"`
-	AsksNotional         string             `json:"a"`
-	IsMaker              bool               `json:"m"`
-	IsReduceOnly         bool               `json:"R"`
-	WorkingType          WorkingType        `json:"wt"`
-	OriginalType         OrderType          `json:"ot"`
-	PositionSide         PositionSideType   `json:"ps"`
-	IsClosingPosition    bool               `json:"cp"`
-	ActivationPrice      string             `json:"AP"`
-	CallbackRate         string             `json:"cr"`
-	RealizedPnL          string             `json:"rp"`
+	Symbol               string             `json:"s"`   // Symbol
+	ClientOrderID        string             `json:"c"`   // Client order ID
+	Side                 SideType           `json:"S"`   // Side
+	Type                 OrderType          `json:"o"`   // Order type
+	TimeInForce          TimeInForceType    `json:"f"`   // Time in force
+	OriginalQty          string             `json:"q"`   // Original quantity
+	OriginalPrice        string             `json:"p"`   // Original price
+	AveragePrice         string             `json:"ap"`  // Average price
+	StopPrice            string             `json:"sp"`  // Stop price. Please ignore with TRAILING_STOP_MARKET order
+	ExecutionType        OrderExecutionType `json:"x"`   // Execution type
+	Status               OrderStatusType    `json:"X"`   // Order status
+	ID                   int64              `json:"i"`   // Order ID
+	LastFilledQty        string             `json:"l"`   // Order Last Filled Quantity
+	AccumulatedFilledQty string             `json:"z"`   // Order Filled Accumulated Quantity
+	LastFilledPrice      string             `json:"L"`   // Last Filled Price
+	CommissionAsset      string             `json:"N"`   // Commission Asset, will not push if no commission
+	Commission           string             `json:"n"`   // Commission, will not push if no commission
+	TradeTime            int64              `json:"T"`   // Order Trade Time
+	TradeID              int64              `json:"t"`   // Trade ID
+	BidsNotional         string             `json:"b"`   // Bids Notional
+	AsksNotional         string             `json:"a"`   // Asks Notional
+	IsMaker              bool               `json:"m"`   // Is this trade the maker side?
+	IsReduceOnly         bool               `json:"R"`   // Is this reduce only
+	WorkingType          WorkingType        `json:"wt"`  // Stop Price Working Type
+	OriginalType         OrderType          `json:"ot"`  // Original Order Type
+	PositionSide         PositionSideType   `json:"ps"`  // Position Side
+	IsClosingPosition    bool               `json:"cp"`  // If Close-All, pushed with conditional order
+	ActivationPrice      string             `json:"AP"`  // Activation Price, only puhed with TRAILING_STOP_MARKET order
+	CallbackRate         string             `json:"cr"`  // Callback Rate, only puhed with TRAILING_STOP_MARKET order
+	PriceProtect         bool               `json:"pP"`  // If price protection is turned on
+	RealizedPnL          string             `json:"rp"`  // Realized Profit of the trade
+	STP                  string             `json:"V"`   // STP mode
+	PriceMode            string             `json:"pm"`  // Price match mode
+	GTD                  int64              `json:"gtd"` // TIF GTD order auto cancel time
 }
 
 // WsAccountConfigUpdate define account config update
@@ -1054,4 +1196,24 @@ func WsUserDataServe(listenKey string, handler WsUserDataHandler, errHandler Err
 		handler(event)
 	}
 	return wsServe(cfg, wsHandler, errHandler)
+}
+
+// WsApiInitReadWriteConn create and serve connection
+func WsApiInitReadWriteConn() (*websocket.Conn, error) {
+	cfg := newWsConfig(getWsApiEndpoint())
+	conn, err := WsGetReadWriteConnection(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, err
+}
+
+// getWsApiEndpoint return the base endpoint of the API WS according the UseTestnet flag
+func getWsApiEndpoint() string {
+	if UseTestnet {
+		return BaseWsApiTestnetURL
+	}
+
+	return BaseWsApiMainURL
 }
