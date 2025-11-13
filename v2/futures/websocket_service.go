@@ -362,6 +362,43 @@ func WsCombinedKlineServe(symbolIntervalPair map[string]string, handler WsKlineH
 	return wsServe(cfg, wsHandler, errHandler)
 }
 
+// WsCombinedKlineServeMultiInterval is similar to WsCombinedKlineServe, but it supports multiple intervals per symbol
+func WsCombinedKlineServeMultiInterval(symbolIntervals map[string][]string, handler WsKlineHandler, errHandler ErrHandler) (doneC, stopC chan struct{}, err error) {
+	endpoint := getCombinedEndpoint()
+	for symbol, intervals := range symbolIntervals {
+		for _, interval := range intervals {
+			endpoint += fmt.Sprintf("%s@kline_%s", strings.ToLower(symbol), interval) + "/"
+		}
+	}
+	endpoint = endpoint[:len(endpoint)-1]
+	cfg := newWsConfig(endpoint)
+	wsHandler := func(message []byte) {
+		j, err := newJSON(message)
+		if err != nil {
+			errHandler(err)
+			return
+		}
+
+		stream := j.Get("stream").MustString()
+		data := j.Get("data").MustMap()
+
+		symbol := strings.Split(stream, "@")[0]
+
+		jsonData, _ := json.Marshal(data)
+
+		event := new(WsKlineEvent)
+		err = json.Unmarshal(jsonData, event)
+		if err != nil {
+			errHandler(err)
+			return
+		}
+		event.Symbol = strings.ToUpper(symbol)
+
+		handler(event)
+	}
+	return wsServe(cfg, wsHandler, errHandler)
+}
+
 // WsContinuousKlineEvent define websocket continuous kline event
 type WsContinuousKlineEvent struct {
 	Event        string            `json:"e"`
@@ -1025,6 +1062,9 @@ type WsUserDataEvent struct {
 
 	// TRADE_LITE
 	WsUserDataTradeLite
+
+	// CONDITIONAL_ORDER_TRIGGER_REJECT
+	WsUserDataConditionalOrderTriggerReject
 }
 
 type WsUserDataAccountConfigUpdate struct {
@@ -1057,6 +1097,10 @@ type WsUserDataTradeLite struct {
 	OrderID         int64    `json:"i"`
 }
 
+type WsUserDataConditionalOrderTriggerReject struct {
+	ConditionalOrderTriggerReject WsConditionalOrderTriggerReject `json:"or"`
+}
+
 func (w *WsUserDataTradeLite) fromSimpleJson(j *simplejson.Json) (err error) {
 	w.Symbol = j.Get("s").MustString()
 	w.OriginalQty = j.Get("q").MustString()
@@ -1083,10 +1127,11 @@ func (e *WsUserDataEvent) UnmarshalJSON(data []byte) error {
 	}
 
 	eventMaps := map[UserDataEventType]any{
-		UserDataEventTypeMarginCall:          &e.WsUserDataMarginCall,
-		UserDataEventTypeAccountUpdate:       &e.WsUserDataAccountUpdate,
-		UserDataEventTypeOrderTradeUpdate:    &e.WsUserDataOrderTradeUpdate,
-		UserDataEventTypeAccountConfigUpdate: &e.WsUserDataAccountConfigUpdate,
+		UserDataEventTypeMarginCall:                    &e.WsUserDataMarginCall,
+		UserDataEventTypeAccountUpdate:                 &e.WsUserDataAccountUpdate,
+		UserDataEventTypeOrderTradeUpdate:              &e.WsUserDataOrderTradeUpdate,
+		UserDataEventTypeAccountConfigUpdate:           &e.WsUserDataAccountConfigUpdate,
+		UserDataEventTypeConditionalOrderTriggerReject: &e.WsUserDataConditionalOrderTriggerReject,
 	}
 
 	switch e.Event {
@@ -1177,6 +1222,12 @@ type WsOrderTradeUpdate struct {
 type WsAccountConfigUpdate struct {
 	Symbol   string `json:"s"`
 	Leverage int64  `json:"l"`
+}
+
+type WsConditionalOrderTriggerReject struct {
+	Symbol       string `json:"s"`
+	OrderId      int64  `json:"i"`
+	RejectReason string `json:"r"`
 }
 
 // WsUserDataHandler handle WsUserDataEvent
