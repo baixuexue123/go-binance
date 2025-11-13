@@ -1,6 +1,9 @@
 package binance
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+)
 
 // CreateUniversalTransferService Universal Transfer (For Master Account)
 type CreateUniversalTransferService struct {
