@@ -308,7 +308,7 @@ type AlphaDepositHistory struct {
 	Amount          string `json:"amount"`
 	TxID            string `json:"txId"`
 	CompleteTime    int64  `json:"completeTime"`
-	ConfirmationNo  string `json:"confirmationNo"`
+	ConfirmationNo  int64  `json:"confirmationNo"`
 	InsertTime      int64  `json:"insertTime"`
 	SourceAddress   string `json:"sourceAddress"`
 	Status          int    `json:"status"`
