@@ -300,7 +300,7 @@ type AlphaWithdrawHistory struct {
 type AlphaDepositHistory struct {
 	ID              string `json:"id"`
 	Network         string `json:"network"`
-	AlphaID         string `json:"alpahId"`
+	AlphaID         string `json:"alphaId"`
 	ContractAddress string `json:"contractAddress"`
 	CoinName        string `json:"coinName"`
 	Address         string `json:"address"`
